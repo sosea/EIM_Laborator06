@@ -4,7 +4,12 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.net.Socket;
+
 import ro.pub.cs.systems.eim.lab06.clientservercommunication.general.Constants;
+import ro.pub.cs.systems.eim.lab06.clientservercommunication.general.Utilities;
 
 public class ClientAsyncTask extends AsyncTask<String, String, Void> {
 
@@ -16,6 +21,7 @@ public class ClientAsyncTask extends AsyncTask<String, String, Void> {
 
     @Override
     protected Void doInBackground(String... params) {
+        Socket socket = null;
         try {
 
             // TODO exercise 6b
@@ -25,11 +31,33 @@ public class ClientAsyncTask extends AsyncTask<String, String, Void> {
             // - while the line that has read is not null (EOF was not sent), append the content to serverMessageTextView
             // by publishing the progress - with the publishProgress(...) method - to the UI thread
             // - close the socket to the server
-
+            String serverAddress = params[0];
+            int serverPort = Integer.parseInt(params[1]);
+            socket = new Socket(serverAddress, serverPort);
+            if (socket == null) {
+                return null;
+            }
+            BufferedReader bufferedReader = Utilities.getReader(socket);
+            String currentLine;
+            while ((currentLine = bufferedReader.readLine()) != null) {
+                publishProgress(currentLine);
+            }
         } catch (Exception exception) {
             Log.e(Constants.TAG, "An exception has occurred: " + exception.getMessage());
             if (Constants.DEBUG) {
                 exception.printStackTrace();
+            }
+        } finally {
+            try {
+                if (socket != null) {
+                    socket.close();
+                }
+                Log.v(Constants.TAG, "Connection closed");
+            } catch (IOException ioException) {
+                Log.e(Constants.TAG, "An exception has occurred: " + ioException.getMessage());
+                if (Constants.DEBUG) {
+                    ioException.printStackTrace();
+                }
             }
         }
         return null;
@@ -39,12 +67,14 @@ public class ClientAsyncTask extends AsyncTask<String, String, Void> {
     protected void onPreExecute() {
         // TODO exercise 6b
         // - reset the content of the serverMessageTextView
+        serverMessageTextView.setText("");
     }
 
     @Override
     protected void onProgressUpdate(String... progress) {
         // TODO exercise 6b
         // - append the content to serverMessageTextView
+        serverMessageTextView.append(progress[0] + "\n");
     }
 
     @Override
